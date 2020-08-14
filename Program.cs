@@ -62,7 +62,7 @@ namespace Reception
             Thread.Sleep(1500);
 
             string nextCommand;
-            Console.WriteLine("Type help for the list of commands.");
+            //Console.WriteLine("Type help for the list of commands.");
             do
             {
                 Console.Write("Next command: ");
