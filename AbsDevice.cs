@@ -1,30 +1,32 @@
-﻿using Microsoft.VisualBasic.CompilerServices;
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
 
-namespace Reception
+namespace Rec
 {
-    //Functions and variables found in every type of device
     abstract class AbsDevice
     {
-        private string _type = "Undefined type";
-        public string GetDeviceType() { return _type; }
-        protected void SetDeviceType(string type) {
-            _type = type;
+        public int Id { get; set; }
+        public string Name { get; set; }
+        private string _type = null;
+        public string Type {
+            get 
+            {
+                return _type;
+            }
+            set
+            {
+                if (_type == null)  //_type cannot be overwritten
+                {
+                    _type = value;
+                }
+            } 
         }
 
-        private int _id;
-        public int GetId() { return _id; }
-        public void SetId(int id) { 
-            _id = id;
+        //Should return a string that has all device attributes in it.
+        virtual public string GetCurrentState() 
+        {
+            return "I was supposed to be overridden!";
         }
-
-        private string _name;
-        public string GetName() { return _name; }
-        public void SetName(string name) { 
-            _name = name;
-        }
-
-        public virtual string GetCurrentState() { return "This string was supposed to be overridden."; }
-
     }
 }

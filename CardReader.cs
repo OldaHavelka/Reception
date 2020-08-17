@@ -1,43 +1,45 @@
 ﻿using System;
 using System.Text;
 
-namespace Reception
+namespace Rec
 {
     class CardReader : AbsDevice
     {
         private const string _type = "CardReader";
         private string _accessCardNumber;
-        public string GetAccessCardNumber() { return _accessCardNumber; }
-        public void SetAccessCardNumber(string accessCardNumber) {
-            _accessCardNumber = ReverseBytesAndPad(accessCardNumber);
+        public string AccessCardNumber {
+            get { return _accessCardNumber; }
+            set { _accessCardNumber = ReverseBytesAndPad(value); } 
         }
 
-        public CardReader(int id, string deviceName, string accessCardNumber)
+        public CardReader(int id, string name, string accessCardNumber)
         {
-            SetDeviceType(_type);
-            SetId(id);
-            SetName(deviceName);
+            Id = id;
+            Name = name;
             _accessCardNumber = ReverseBytesAndPad(accessCardNumber);
+            Type = _type;
             Console.WriteLine(GetCurrentState());
         }
 
+        //Returns a string that has all device attributes in it.
         public override string GetCurrentState()
         {
-            StringBuilder returnable = new StringBuilder().AppendFormat("{0} {1} with id {2} has an access card number of {3}", GetDeviceType(), GetName(), GetId().ToString(), _accessCardNumber);
-            return returnable.ToString();
+            return _type + " " + Name + " with id " + Id + " has an access card number of " + _accessCardNumber + ".";
         }
 
+        //Takes a string, makes it 16 chars long by filling it with zeros, reverses the string in pairs. (AB12CD becomes ...00CD12AB)
+        //Expects input that has even length.
         private string ReverseBytesAndPad(string accessCardNumber)
         {
             StringBuilder returnable = new StringBuilder();
             StringBuilder accessCardNumberBuilder = new StringBuilder(accessCardNumber);
-            for (int i = accessCardNumber.Length/2; i < 8; i++) 
+            for (int i = accessCardNumber.Length / 2; i < 8; i++)
             {
                 accessCardNumberBuilder.Append("00");
             }
             for (int i = 7; i >= 0; i--)
             {
-                returnable.Append(accessCardNumberBuilder[i*2]).Append(accessCardNumberBuilder[i * 2 + 1]);
+                returnable.Append(accessCardNumberBuilder[i * 2]).Append(accessCardNumberBuilder[i * 2 + 1]);
             }
             return returnable.ToString();
         }

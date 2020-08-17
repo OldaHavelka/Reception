@@ -2,20 +2,21 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Reception
+namespace Rec
 {
+    //Contains all enums used in this program.
     class Enums
-    {
-        public enum Sound
+    { 
+        public enum Sound 
         {
             None,
             Music,
-            Alarm
+            Alarm,
+            Unacceptable
         }
 
         public enum State
         {
-            Default = 0b_0000_0000,
             Locked = 0b_0000_0001,
             Open = 0b_0000_0010,
             OpenForTooLong = 0b_0000_0100,

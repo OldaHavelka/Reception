@@ -1,493 +1,344 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
+using System.ComponentModel;
+using System.Dynamic;
+using System.Reflection.Metadata.Ecma335;
+using System.Reflection.PortableExecutable;
+using System.Text;
 
-namespace Reception
+namespace Rec
 {
     class Root
     {
-
         private List<Group> _listOfGroups = new List<Group>();
-        public List<Group> GetListOfGroups() { return _listOfGroups; }
 
-        //Root only contains one list of groups: List<Group> ListOfGroups
-        public Root()
+        //Creates a group and writes its number into the console.
+        public void CreateGroup()
         {
-        }
-
-        //Creates an empty group and inserts it into the list of groups: List<Group> ListOfGroups
-        //Informs user that a group has been created. 
-        public void CreateGroup() {
             _listOfGroups.Add(new Group());
             Console.WriteLine("Group {0} added.", _listOfGroups.Count - 1);
-            UpdateTree();
+            PrintTree();
         }
-        
-        //Calls DoesGroupExist() to check if group exists
-        //If so, remove group from the group list: List<Group> ListOfGroups
-        //If so, inform user about removing the group.
-        //If not so, DoesGroupExist() explained why the group doesn't exist.
-        public void RemoveGroup() 
+
+        //Removes a group.
+        //Asks user for input, checks if input is an integer, checks if group exists, removes group, confirms removal to the user, prints tree.
+        //If any check fails, explains to the user why did a check fail.
+        public void RemoveGroup()
         {
-            Console.Write("What group would you like to remove?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-            _listOfGroups.RemoveAt(groupIndex);
-            Console.WriteLine("Group {0} removed.", groupIndex);
-            UpdateTree();
+            int groupIndex = GetGroupIndexFromUser();
+            if (groupIndex != int.MinValue) {
+                _listOfGroups.RemoveAt(groupIndex);
+                Console.WriteLine("Group {0} removed.", groupIndex);
+                PrintTree();
+            }
+
+        }
+
+        //Moves a device into a group.
+        //If called without arguments, asks user for deviceId and groupIndex and checks if they're valid integers.
+        //If called with arguments, expects them to be valid.
+        //Finds a device by its id and a group by its index, checks their existence, moves device to its new group.
+        //If any check fails, explains why.
+        public void Move(int deviceId = int.MinValue, int groupIndex = int.MinValue)
+        {
+            if (deviceId == int.MinValue)
+            {
+                deviceId = GetIdFromUser(true, true);
+                if (deviceId != int.MinValue) {
+                    groupIndex = GetGroupIndexFromUser();
+                }
+            }
+
+            if (deviceId != int.MinValue && groupIndex != int.MinValue)
+            {
+                AbsDevice device = GetDeviceById(deviceId);
+                RemoveDevice(deviceId, true);
+                InsertDevice(device, groupIndex);
+                Console.WriteLine("Device with id {0} moved to group {1}.", deviceId, groupIndex);
+                PrintTree();
+            }
+        }
+
+        //Prints groups and their device names and ids.
+        public void PrintTree()
+        {
+            for (int i = 0; i < _listOfGroups.Count; i++)
+            {
+                Console.Write("Group {0}:", i);
+                foreach (AbsDevice device in _listOfGroups[i]._listOfDevices)
+                {
+                    Console.Write(" [{0}, {1}]", device.Id, device.Name);
+                }
+                Console.Write("\n");
+            }
         }
 
         //Checks if a group exists.
         //If group exists, return true.
-        //If GroupIndex is less than zero, return false and explain why it does not exist.
-        //If group does not exist, return false and explain why it does not exist.
-        //If group does not exist because there is no group, create a group (since there is no use for a root without a group).
-        public bool DoesGroupExist(int groupIndex) {
-            if (_listOfGroups.Count == 0) 
-            { 
-                Console.WriteLine("There are no groups.");
-                CreateGroup();
-                return false; 
-            }
-            if (_listOfGroups.Count - 1 < groupIndex || groupIndex < 0)
-            { 
-                Console.WriteLine("The ammount of groups is {0}. Please select a group ranging from 0 to {1}", _listOfGroups.Count, _listOfGroups.Count - 1);
+        //If group does not exist, explain why, return false.
+        public bool DoesGroupExist(int groupIndex)
+        {
+            if (_listOfGroups.Count - 1 < groupIndex)
+            {
+                Console.WriteLine("Group {0} does not exist. Current groups range from 0 to {1}", groupIndex, _listOfGroups.Count - 1);
                 return false;
             }
             return true;
         }
 
-        //Asks user to input a value for group index until accepted and passed forward.
-        //Also explains incorrect inputs.
-        public int UserInputUntilValidGroupIndex() 
+        //Inserts device into a group.
+        //Expects correct inputs.
+        private void InsertDevice(AbsDevice device, int groupIndex)
         {
-            bool failure;
-            string groupIndexInput;
-            do
-            {
-                failure = false;
-                groupIndexInput = Console.ReadLine();
-                try { int.Parse(groupIndexInput); }
-                catch (FormatException)
-                {
-                    Console.WriteLine("Provided input is not an integer.");
-                    failure = true;
-                    continue;
-                }
-                if (!DoesGroupExist(int.Parse(groupIndexInput))) { failure = true; }
-            } while (failure);
-            return int.Parse(groupIndexInput);
+            _listOfGroups[groupIndex]._listOfDevices.Add(device);
         }
 
-
-
-        //Asks user to input a value for id until accepted and passed forward.
-        //Also explains incorrect inputs.
-        public int UserInputUntilValidId() 
+        //Returns a device if exists.
+        //If a device with matching id is found, return device.
+        //If not, and silently is false, explains why, return null.
+        public AbsDevice GetDeviceById(int deviceId)
         {
-            bool failure;
-            string deviceIdInput;
-            do
-            {
-                failure = false;
-                deviceIdInput = Console.ReadLine();
-                try { int.Parse(deviceIdInput); }
-                catch (FormatException)
-                {
-                    Console.WriteLine("Provided input is not an integer.");
-                    failure = true;
-                    continue;
-                }
-                catch when (IsIdUnique(int.Parse(deviceIdInput))) { failure = false; }
-            } while (failure);
-            return int.Parse(deviceIdInput);
-        }
-
-        //Asks user to input a value for device type until accepted and passed forward.
-        //Also explains incorrect inputs.
-        public int UserInputUntilValidDeviceType()
-        {
-            string deviceTypeInput;
-            int deviceType;
-            do
-            {
-                deviceTypeInput = Console.ReadLine();
-                deviceType = DeviceTypeInputToDeviceType(deviceTypeInput);
-            } while (deviceType == -1);  //If DeviceTypeInput is not an accepted input, DeviceTypeInputToDeviceType outputs -1.
-            return deviceType;
-        }
-
-        //Asks the user what device to create, which attributes does the device have, and into which group they want the device to be put in.
-        //Checks if all inputs are acceptable.
-        //Calls CreateDevice() on an Group list in the list of groups: List<Group> ListOfGroups
-        public void CreateDevice() {
-
-            Console.Write("What group would you like to add a device to?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-
-            Console.WriteLine("What device would you like to add to the group {0}?", groupIndex);
-            Console.Write("Choices: Alarm (0), CardReader (1), Door (2), LedPanel (3), Speaker (4). : ");
-            int deviceType = UserInputUntilValidDeviceType();
-
-            Console.Write("What ID would you like for your device to have?: ");
-            int deviceId = UserInputUntilValidId();
-
-            Console.Write("What name would you like for your device to have?: ");
-            string deviceName = Console.ReadLine(); //Any device name should be alright. Including null.
-
-            _listOfGroups[groupIndex].CreateDevice(deviceType, deviceId, deviceName);
-            UpdateTree();
-        }
-
-        public void RemoveDevice() 
-        {
-            Console.Write("What group would you like to remove a device from?: ");
-            _listOfGroups[UserInputUntilValidGroupIndex()].RemoveDevice();
-            UpdateTree();
-        }
-
-
-        //Transforms certain strings into integer values.
-        //If DeviceTypeInput does not match any specific string, -1 is returned.
-        private int DeviceTypeInputToDeviceType(string DeviceTypeInput)
-        {
-            switch (DeviceTypeInput)
-            {
-                case "Alarm": case "0": return 0;
-                case "CardReader": case "1": return 1;
-                case "Door": case "2": return 2;
-                case "LedPanel": case "3": return 3;
-                case "Speaker": case "4": return 4;
-                default: return -1;
-            }
-        }
-
-        //If Id is not found in any device, return true.
-        //If Id is found in any device, return false and inform the user that the Id is not unique.
-        public bool IsIdUnique(int Id)
-        {
-            foreach (Group Group in _listOfGroups)
-            {
-                foreach (AbsDevice Device in Group.GetListOfDevices())
-                {
-                    if (Device.GetId() == Id) 
-                    { 
-                        Console.WriteLine("Id {0} is not unique.", Id); 
-                        return false; 
-                    }
-                }
-            }
-            return true;
-        }
-
-        //Asks user what group he wants to interact with and then calls a matching method from Group.cs
-        public void ChangeCardReaderAccessListNumber()
-        {
-            Console.Write("What group is the CardReader in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-
-            _listOfGroups[groupIndex].ChangeCardReaderAccessListNumber();
-        }
-
-        //Asks user what group he wants to interact with and then calls a matching method from Group.cs
-        public void ChangeLedPanelMessage()
-        {
-            Console.Write("What group is the LedPanel in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-
-            _listOfGroups[groupIndex].ChangeLedPanelMessage();
-        }
-
-        //Asks user what group he wants to interact with and then calls a matching method from Group.cs
-        public void ChangeSpeakerVolume()
-        {
-            Console.Write("What group is the Speaker in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-
-            _listOfGroups[groupIndex].ChangeSpeakerVolume();
-        }
-
-        //Asks user what group he wants to interact with and then calls a matching method from Group.cs
-        public void ChangeSpeakerSound()
-        {
-            Console.Write("What group is the Speaker in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-
-            _listOfGroups[groupIndex].ChangeSpeakerSound();
-        }
-
-        //Asks user what group he wants to interact with, asks for a specific device, copies it into another user-specified group
-        //and removes it from the first group
-        public void MoveDevice()
-        {
-            Console.Write("What group is the device in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-            if (_listOfGroups[groupIndex].AreThereAnyDevices())
-            {
-                Console.Write("What device is it?: ");
-                int deviceIndex = _listOfGroups[groupIndex].UserInputUntilValidDeviceIndex();
-                AbsDevice device = _listOfGroups[groupIndex].GetListOfDevices()[deviceIndex];
-                Console.Write("What group do you want to move the device into?: ");
-                _listOfGroups[UserInputUntilValidGroupIndex()].GetListOfDevices().Add(device);
-                _listOfGroups[groupIndex].GetListOfDevices().RemoveAt(deviceIndex);
-            }
-            UpdateTree();
-        }
-
-        //Asks user to change id in a chosen device and then does so.
-        //Any errors are explained to the user if they occur and then the user will be asked again.
-        public void ChangeAnyId() {
-            Console.Write("What group is the device in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-            if (_listOfGroups[groupIndex].AreThereAnyDevices()) 
-            {
-                Console.Write("What device is it?: ");
-                int deviceIndex = _listOfGroups[groupIndex].UserInputUntilValidDeviceIndex();
-                Console.Write("What new id do you want for your device to have?: ");
-                AbsDevice device = _listOfGroups[groupIndex].GetListOfDevices()[deviceIndex];
-                device.SetId(UserInputUntilValidId());
-                Console.WriteLine(device.GetCurrentState());
-            }
-        }
-
-        //Asks user to change name in a chosen device and then does so.
-        //Any errors are explained to the user if they occur and then the user will be asked again.
-        public void ChangeAnyName()
-        {
-            Console.Write("What group is the device in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-            if (_listOfGroups[groupIndex].AreThereAnyDevices())
-            {
-                Console.Write("What device is it?: ");
-                int deviceIndex = _listOfGroups[groupIndex].UserInputUntilValidDeviceIndex();
-                Console.Write("What new name do you want for your device to have?: ");
-                AbsDevice device = _listOfGroups[groupIndex].GetListOfDevices()[deviceIndex];
-                device.SetName(Console.ReadLine());
-                Console.WriteLine(device.GetCurrentState());
-            }
-        }
-
-        public void UpdateStatus()
-        {
-            Console.Write("What group is the device in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-            if (_listOfGroups[groupIndex].AreThereAnyDevices())
-            {
-                Console.Write("What device is it?: ");
-                int deviceIndex = _listOfGroups[groupIndex].UserInputUntilValidDeviceIndex();
-                Console.WriteLine(_listOfGroups[groupIndex].GetListOfDevices()[deviceIndex].GetCurrentState());
-            }
-        }
-
-        //Asks user in which group he wants to open a door
-        public void OpenDoor()
-        {
-            Console.Write("What group is the Door in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-
-            _listOfGroups[groupIndex].OpenDoor();
-        }
-
-        //Asks user in which group he wants to close a door
-        public void CloseDoor() {
-            Console.Write("What group is the Door in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-
-            _listOfGroups[groupIndex].CloseDoor();
-        }
-
-        //Asks user in which group he wants to lock a door
-        public void LockDoor() {
-            Console.Write("What group is the Door in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-
-            _listOfGroups[groupIndex].LockDoor();
-        }
-
-        //Asks user in which group he wants to unlock a door
-        public void UnlockDoor() {
-            Console.Write("What group is the Door in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-
-            _listOfGroups[groupIndex].UnlockDoor();
-        }
-
-        //Asks user in which group he wants to forcibly open a door
-        public void OpenDoorForcibly() {
-            Console.Write("What group is the Door in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-
-            _listOfGroups[groupIndex].OpenDoorForcibly();
-        }
-
-        //Asks user in which group he wants to tag a door as open for too long
-        public void DoorOpenedForTooLong() {
-            Console.Write("What group is the Door in?: ");
-            int groupIndex = UserInputUntilValidGroupIndex();
-
-            _listOfGroups[groupIndex].DoorOpenedForTooLong();
-        }
-
-
-        public void CreateDevice(int groupIndex, int deviceType, int id, string deviceName, dynamic arg1 = null, dynamic arg2 = null)
-        {
-            if (IsIdUnique(id) && DoesGroupExist(groupIndex)) 
-            {
-                _listOfGroups[groupIndex].CreateDevice(deviceType, id, deviceName, arg1, arg2); 
-            }
-            UpdateTree();
-        }
-
-        public void RemoveDevice(int groupIndex, int deviceIndex) 
-        {
-            if (DoesGroupExist(groupIndex)) 
-            {
-                _listOfGroups[groupIndex].RemoveDevice(deviceIndex);
-            }
-            UpdateTree();
-        }
-
-        public void RemoveGroup(int groupIndex)
-        {
-            if (DoesGroupExist(groupIndex)) {
-                _listOfGroups.RemoveAt(groupIndex);
-                Console.WriteLine("Group {0} removed.", groupIndex);
-            }
-            UpdateTree();
-        }
-
-        public void ChangeAnyName(int groupIndex, int deviceIndex, string newName) {
-            if (DoesGroupExist(groupIndex)) 
-            {
-                if(_listOfGroups[groupIndex].DoesDeviceExist(deviceIndex))
-                {
-                    AbsDevice device = _listOfGroups[groupIndex].GetListOfDevices()[deviceIndex];
-                    device.SetName(newName);
-                    Console.WriteLine(device.GetCurrentState());
-                }
-            }
-        }
-
-        public void ChangeAnyId(int groupIndex, int deviceIndex, int newId)
-        {
-            if (DoesGroupExist(groupIndex) && IsIdUnique(newId))
-            {
-                if (_listOfGroups[groupIndex].DoesDeviceExist(deviceIndex))
-                {
-                    AbsDevice device = _listOfGroups[groupIndex].GetListOfDevices()[deviceIndex];
-                    device.SetId(newId);
-                    Console.WriteLine(device.GetCurrentState());
-                }
-            }
-        }
-
-        public void MoveDevice(int currentGroupIndex, int deviceIndex, int newGroupIndex)
-        {
-            if (DoesGroupExist(currentGroupIndex))
-            {
-                if (_listOfGroups[currentGroupIndex].DoesDeviceExist(deviceIndex) && DoesGroupExist(newGroupIndex))
-                {
-                    AbsDevice device = _listOfGroups[currentGroupIndex].GetListOfDevices()[deviceIndex];
-                    _listOfGroups[newGroupIndex].GetListOfDevices().Add(device);
-                    _listOfGroups[currentGroupIndex].GetListOfDevices().RemoveAt(deviceIndex);
-                }
-            }
-            UpdateTree();
-        }
-
-        public void ChangeLedPanelMessage(int groupIndex, int deviceIndex, string newMessage) 
-        {
-            if (DoesGroupExist(groupIndex)) 
-            {
-                if (_listOfGroups[groupIndex].DoesDeviceExist(deviceIndex))
-                {
-                    if (_listOfGroups[groupIndex].GetListOfDevices()[deviceIndex].GetDeviceType() == "LedPanel")
-                    {
-                        LedPanel ledPanel = (LedPanel)_listOfGroups[groupIndex].GetListOfDevices()[deviceIndex];
-                        ledPanel.SetMessage(newMessage);
-                        Console.WriteLine(ledPanel.GetCurrentState());
-                    }
-                    else 
-                    {
-                        Console.WriteLine("Device {0} is not a LedPanel.", deviceIndex);
-                    }
-                }
-            }
-        }
-
-        public void ChangeSpeakerSound(int groupIndex, int deviceIndex, Enums.Sound newSound)
-        {
-            if (DoesGroupExist(groupIndex))
-            {
-                if (_listOfGroups[groupIndex].DoesDeviceExist(deviceIndex))
-                {
-                    if (_listOfGroups[groupIndex].GetListOfDevices()[deviceIndex].GetDeviceType() == "Speaker")
-                    {
-                        Speaker speaker = (Speaker)_listOfGroups[groupIndex].GetListOfDevices()[deviceIndex];
-                        speaker.SetSound(newSound);
-                        Console.WriteLine(speaker.GetCurrentState());
-                    }
-                    else
-                    {
-                        Console.WriteLine("Device {0} is not a LedPanel.", deviceIndex);
-                    }
-                }
-            }
-        }
-
-        public void LockDoor(int groupIndex, int deviceIndex) 
-        {
-            if (DoesGroupExist(groupIndex)) 
-            {
-                if (_listOfGroups[groupIndex].DoesDeviceExist(deviceIndex))
-                {
-                    if (_listOfGroups[groupIndex].GetListOfDevices()[deviceIndex].GetDeviceType() == "Door")
-                    {
-                        Door door = (Door)_listOfGroups[groupIndex].GetListOfDevices()[deviceIndex];
-                        door.Lock();
-                        Console.WriteLine(door.GetCurrentState());
-                    }
-                    else
-                    {
-                        Console.WriteLine("Device {0} is not a LedPanel.", deviceIndex);
-                    }
-                }
-            }
-        }
-
-        public void UnlockDoor(int groupIndex, int deviceIndex)
-        {
-            if (DoesGroupExist(groupIndex))
-            {
-                if (_listOfGroups[groupIndex].DoesDeviceExist(deviceIndex))
-                {
-                    if (_listOfGroups[groupIndex].GetListOfDevices()[deviceIndex].GetDeviceType() == "Door")
-                    {
-                        Door door = (Door)_listOfGroups[groupIndex].GetListOfDevices()[deviceIndex];
-                        door.Unlock();
-                        Console.WriteLine(door.GetCurrentState());
-                    }
-                    else
-                    {
-                        Console.WriteLine("Device {0} is not a LedPanel.", deviceIndex);
-                    }
-                }
-            }
-        }
-
-        public void UpdateTree() 
-        {
-            int i = 0;
             foreach (Group group in _listOfGroups)
             {
-                Console.Write("Group {0}: ",i);
-                foreach (AbsDevice device in group.GetListOfDevices()) 
+                AbsDevice device = group.GetDeviceById(deviceId, true);
+                if (device != null)
                 {
-                    Console.Write(device.GetName()+" ");
+                    return device;
                 }
-                i++;
-                Console.Write("\n");
             }
+            return null;
+        }
+
+        //Outputs group index of a device.
+        //Checks ids of all devices and compares them to deviceId
+        //If found, returns index of the group the device is in
+        //If not found, returns int.MinValue
+        public int GetGroupIndexById(int deviceId)
+        {
+            for (int i = 0; i < _listOfGroups.Count; i++)
+            {
+                if (_listOfGroups[i].GetDeviceById(deviceId, true) != null)
+                {
+                    return i;
+                }
+            }
+            return int.MinValue;
+        }
+
+        //Creates a device and inserts it into a specified group
+        //If called without arguments, asks user for device id and for device name
+        //If id is unique, passes type, id and name to Group.CreateDevice() that handles creating specific devices.
+        public void CreateDevice(int deviceType, int groupIndex = int.MinValue, int deviceId = int.MinValue, string deviceName = null, dynamic arg1 = null, dynamic arg2 = null)
+        {
+            {
+                if (_listOfGroups.Count != 0)
+                {
+                    if (deviceId == int.MinValue)
+                    {
+                        groupIndex = GetGroupIndexFromUser();
+                        if (groupIndex != int.MinValue) {
+                            deviceId = GetIdFromUser(false);
+                            if (deviceId != int.MinValue)
+                            {
+                                Console.Write("Please input the name of the device: ");
+                                deviceName = Console.ReadLine();        //Any name is alright. Including null.
+                            }
+
+                        }
+                    }
+
+                    if (groupIndex != int.MinValue && deviceId != int.MinValue)
+                    {
+                        if (GetDeviceById(deviceId) == null) {
+                            _listOfGroups[groupIndex].CreateDevice(deviceType, deviceId, deviceName, arg1, arg2);
+                        }
+                    }
+                    PrintTree();
+                }
+                else
+                {
+                    Console.WriteLine("There are no groups. A group will be created.");
+                    CreateGroup();
+                }
+            }
+        }
+
+        //Removes a device.
+        //If called without arguments, asks user for device id, checks if device with matching id exists, passes id to Group.RemoveDevice()
+        //If called with arguments, passes arguments to Group.RemoveDevice(). Expects arguments to be valid.
+        //If silently is false, prints tree.
+        public void RemoveDevice(int deviceId = int.MinValue, bool silently = false)
+        {
+            if (deviceId == int.MinValue)
+            {
+                deviceId = GetIdFromUser(true, true);
+            }
+            if (deviceId != int.MinValue)
+            {
+                _listOfGroups[GetGroupIndexById(deviceId)].RemoveDevice(deviceId, silently);
+            }
+            if (!silently) { PrintTree(); }
+        }
+
+        //Changes an attribute of a device.
+        //If called without arguments other than changeType, asks user for device id, checks if device with matching id exists, passes args to Group.Change()
+        //Checks for ids and names are done here.
+        //If called with arguments, passes arguments to Group.Change(). Expects arguments to be valid.
+        //If any check fails, explains why
+        public void Change(int changeType, int deviceId = int.MinValue, dynamic arg1 = null)
+        {
+            if (deviceId == int.MinValue)
+            {
+                deviceId = GetIdFromUser(true, true);
+            }
+            if (deviceId != int.MinValue)
+            {
+                if (arg1 == null)
+                {
+                    switch (changeType)
+                    {
+                        case 0:
+                            {
+                                Console.Write("Please input a new id: ");
+                                arg1 = GetIdFromUser(false, false, true);
+                                if (arg1 != int.MinValue) {
+                                    _listOfGroups[GetGroupIndexById(deviceId)].Change(changeType, deviceId, arg1);
+                                }
+                            }
+                            break;
+                        case 1:
+                            {
+                                Console.Write("Please input a new name: ");
+                                _listOfGroups[GetGroupIndexById(deviceId)].Change(changeType, deviceId, Console.ReadLine());
+                            }
+                            break;
+                        default: _listOfGroups[GetGroupIndexById(deviceId)].Change(changeType, deviceId, arg1); break;
+                    }
+                }
+                else {
+                    _listOfGroups[GetGroupIndexById(deviceId)].Change(changeType, deviceId, arg1);
+                    if (changeType == 0) { PrintStatus(arg1); }
+                }
+            }
+        }
+
+        //Asks user for device id, if device exists, print the status of the device.
+        public void PrintStatus(int deviceId = int.MinValue)
+        {
+            if (deviceId == int.MinValue) {
+                deviceId = GetIdFromUser(true);
+            }
+            if (deviceId != int.MinValue)
+            {
+                Console.WriteLine(GetDeviceById(deviceId).GetCurrentState());
+            }
+
+        }
+
+        //Opens, closes, locks, unlocks, force opens and tags a door as open for too long.
+        //If called without arguments, asks user for device id.
+        //Passes arguments to Group.ChangeDoorStatus().
+        public void ChangeDoorStatus(int doorChangeType, int deviceId = int.MinValue)
+        {
+            if (deviceId == int.MinValue)
+            {
+                deviceId = GetIdFromUser(true, true);
+            }
+            if (deviceId != int.MinValue) { _listOfGroups[GetGroupIndexById(deviceId)].ChangeDoorStatus(doorChangeType, deviceId); }
+
+        }
+
+        //If device with deviceId does not exist, return true
+        //If device with deviceId does exist, return false
+        public bool IsIdUnique(int deviceId)
+        {
+            if (GetDeviceById(deviceId) == null) { return true; }
+            return false;
+        }
+
+        //Asks user for id, outputs a correct id. Returns are dependent on shouldBeUnique and shouldExist - either returns a valid id or int.MinValue.
+        //Asks user for id, checks if integer, checks if exists.
+        //If shouldBeUnique is true, return id if id does not exist.
+        //If shouldBeUnique is false, return int.MinValue if id exists.
+        //shouldExist changes error messages
+        //If any check fails, explains why
+        public int GetIdFromUser(bool shouldBeUnique, bool shouldExist = false, bool customInteraction = false) 
+        {
+            if (!customInteraction) 
+            {
+                Console.WriteLine("Please input device id.");
+                Console.WriteLine("Id has to be an integer and cannot have the value of {0}.", int.MinValue);
+                Console.Write("Device id: ");
+            }
+            try
+            {
+                int deviceId = int.Parse(Console.ReadLine());
+                if (shouldBeUnique)
+                {
+                    if (!IsIdUnique(deviceId)) { return deviceId; }
+                    else
+                    {
+                        if (shouldExist) { Console.WriteLine("Device with id {0} does not exist.", deviceId); }
+                        else { Console.WriteLine("Device with id {0} exists.", deviceId); }
+                    }
+                }
+                else
+                {
+                    if (IsIdUnique(deviceId)) { return deviceId; }
+                    else
+                    {
+                        if (shouldExist) { Console.WriteLine("Device with id {0} does not exist.", deviceId); }
+                        else { Console.WriteLine("Device with id {0} exists.", deviceId); }
+                    }
+                }
+                
+
+            }
+            catch (FormatException)
+            {
+                Console.WriteLine("Device id has to be an integer.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+            return int.MinValue;
+        }
+
+        //Gets group index from user if group exists
+        //Asks user for group index, chceks if int, checks if exists, returns group index
+        //If any check fails, explains why.
+        public int GetGroupIndexFromUser(bool customInteraction = false)
+        {
+            if (!customInteraction)
+            {
+                Console.WriteLine("Please input number of the group.");
+                Console.WriteLine("Group number has to be an integer and has to be more than or equal to zero.");
+                Console.Write("Group number: ");
+            }
+
+            try
+            {
+                int groupNumber = int.Parse(Console.ReadLine());
+                if (groupNumber < 0) 
+                {
+                    Console.WriteLine("Group number has to be more than or equal to zero.");
+                }
+                else
+                {
+                    if (DoesGroupExist(groupNumber)) { return groupNumber; }
+                }
+                
+            }
+            catch (FormatException)
+            {
+                Console.WriteLine("Group number has to be an integer.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+            return int.MinValue;
         }
     }
 }

@@ -1,25 +1,23 @@
 ﻿using System;
-using System.Text;
 
-namespace Reception
+namespace Rec
 {
     class Alarm : AbsDevice
     {
-        const string Type = "Alarm";
+        private const string _type = "Alarm";
 
-        public Alarm(int Id, string DeviceName) 
+        public Alarm(int id, string name) 
         {
-            SetDeviceType(Type);
-            SetId(Id);
-            SetName(DeviceName);
+            Id = id;
+            Name = name;
+            Type = _type;
             Console.WriteLine(GetCurrentState());
         }
 
+        //Returns a string that has all device attributes in it.
         public override string GetCurrentState()
         {
-            StringBuilder returnable = new StringBuilder().AppendFormat("{0} {1} with id {2}", GetDeviceType(), GetName(), GetId().ToString());
-            return returnable.ToString();
+            return _type + " " + Name + " with id " + Id + ".";
         }
-
     }
 }

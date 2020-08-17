@@ -1,32 +1,27 @@
 ﻿using System;
-using System.Data;
+using System.Collections.Generic;
 using System.Text;
 
-namespace Reception
+namespace Rec
 {
     class LedPanel : AbsDevice
     {
-        private string _message;
-        public void SetMessage(string Message) { 
-            _message = Message;
-        }
-        public string GetMessage() { return _message; }
-
+        public string Message { get; set; }
         private const string _type = "LedPanel";
 
-        public LedPanel(int id, string deviceName, string message) 
+        public LedPanel(int id, string name, string message)
         {
-            SetDeviceType(_type);
-            SetId(id);
-            SetName(deviceName);
-            _message = message;
+            Id = id;
+            Name = name;
+            Message = message;
+            Type = _type;
             Console.WriteLine(GetCurrentState());
         }
 
-        public override string GetCurrentState() 
+        //Returns a string that has all device attributes in it.
+        public override string GetCurrentState()
         {
-            StringBuilder returnable = new StringBuilder().AppendFormat("{0} {1} with id {2} displays a message: {3}", GetDeviceType(), GetName(), GetId().ToString(), _message); 
-            return returnable.ToString();
+            return _type + " " + Name + " with id " + Id + " displays a message: \"" + Message + "\".";
         }
     }
 }
