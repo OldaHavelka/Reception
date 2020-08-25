@@ -1,23 +1,22 @@
-﻿using System;
-
-namespace Rec
+﻿namespace Reception
 {
     class Alarm : AbsDevice
     {
-        private const string _type = "Alarm";
 
-        public Alarm(int id, string name) 
+        //constructor, creates this.Alarm
+        public Alarm(int id, string name)
         {
             Id = id;
-            Name = name;
-            Type = _type;
-            Console.WriteLine(GetCurrentState());
+            Type = (Types)0;
+            var UpdateEvent = new Events();
+            DeviceUpdated += UpdateEvent.OnDeviceUpdated;
+            Name = name;  //I want only one OnDeviceUpdated triggered on device creation.
         }
 
         //Returns a string that has all device attributes in it.
         public override string GetCurrentState()
         {
-            return _type + " " + Name + " with id " + Id + ".";
+            return Type.ToString() + " " + Name + " with id " + Id + ".";
         }
     }
 }
