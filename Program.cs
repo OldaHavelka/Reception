@@ -186,7 +186,8 @@ namespace Reception
                     int groupIndex = int.Parse(Console.ReadLine());
                     if (groupIndex < 0) 
                     {
-                        Console.WriteLine("Group number has to range from 0 to {0}", Root.ListOfGroups.Count - 1);
+                        if (Root.ListOfGroups.Count > 0) { Console.WriteLine("Group number has to range from 0 to {0}", Root.ListOfGroups.Count - 1); }
+                        else { Console.WriteLine("There are no groups. Please create a group."); }
                         return false;
                     }
                     root.RemoveGroup(groupIndex);
@@ -198,7 +199,8 @@ namespace Reception
                 }
                 catch (ArgumentOutOfRangeException)
                 {
-                    Console.WriteLine("Group number has to range from 0 to {0}", Root.ListOfGroups.Count - 1);
+                    if (Root.ListOfGroups.Count > 0) { Console.WriteLine("Group number has to range from 0 to {0}", Root.ListOfGroups.Count - 1); }
+                    else { Console.WriteLine("There are no groups. Please create a group."); }
                     return false;
                 }
                 catch (OverflowException)
@@ -220,7 +222,11 @@ namespace Reception
 
                     Console.Write("Select the group for a device to be created in: ");
                     try { groupIndex = int.Parse(Console.ReadLine()); }
-                    catch { Console.WriteLine("Group index has to be an integer ranging from 0 to {0}.", Root.ListOfGroups.Count - 1); return false; }
+                    catch {
+                        if (Root.ListOfGroups.Count > 0) { Console.WriteLine("Group number has to range from 0 to {0}", Root.ListOfGroups.Count - 1); }
+                        else { Console.WriteLine("There are no groups. Please create a group."); }
+                        return false;
+                    }
                     Console.Write("Device ID: ");
                     try { deviceId = int.Parse(Console.ReadLine()); }
                     catch { Console.WriteLine("Device ID has to be an integer ranging from {0} to {1}.", int.MinValue, int.MaxValue); return false; }
@@ -252,7 +258,11 @@ namespace Reception
                 }
                 try { root.CreateDevice(groupIndex, deviceType, deviceId, deviceName, additionalProperties); }
                 catch (DeviceIdIsNotUniqueException) { Console.WriteLine("Device ID has to be unique."); return false; }
-                catch (ArgumentOutOfRangeException) { Console.WriteLine("Group number has to range from 0 to {0}", Root.ListOfGroups.Count - 1); return false; }
+                catch (ArgumentOutOfRangeException) {
+                    if (Root.ListOfGroups.Count > 0) { Console.WriteLine("Group number has to range from 0 to {0}", Root.ListOfGroups.Count - 1); }
+                    else { Console.WriteLine("There are no groups. Please create a group."); }
+                    return false; 
+                }
                 catch (AccessCardNumberContainsInvalidCharactersException) { Console.WriteLine("Access card number has to be made up of digits 0-9 and letters a-f."); return false; }
                 catch (AccessCardNumberInvalidLengthException) { Console.WriteLine("Access card number length has to be in the range of 0 to 16 and even."); return false; }
                 catch (AccessCardNumberNotEvenLengthException) { Console.WriteLine("Access card number length has to be in the range of 0 to 16 and even."); return false; }
@@ -357,7 +367,11 @@ namespace Reception
                 }
                 try { root.Move(deviceId, groupIndex); }
                 catch (DeviceDoesNotExistException) { Console.WriteLine("Device has to exist."); return false; }
-                catch (ArgumentOutOfRangeException) { Console.WriteLine("Group number has to range from 0 to {0}", Root.ListOfGroups.Count - 1); return false; }
+                catch (ArgumentOutOfRangeException) {
+                    if (Root.ListOfGroups.Count > 0) { Console.WriteLine("Group number has to range from 0 to {0}", Root.ListOfGroups.Count - 1); }
+                    else { Console.WriteLine("There are no groups. Please create a group."); }
+                    return false; 
+                }
                 return true;
             }
 
